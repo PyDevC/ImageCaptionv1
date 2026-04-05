@@ -49,3 +49,24 @@ class ImageCaptionModel(nn.Module):
     def forward(self, images: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
         features = self.encoder(images)
         return self.decoder(features, captions)
+
+    def caption_image(self, image, vocabulary, max_length=50):
+        result_caption = []
+        with torch.no_grad():
+            x = self.encoder(image).unsqueeze(1) # (1, 1, embed_size)
+            states = None
+
+            for _ in range(max_length):
+                hiddens, states = self.decoder.lstm(x, states)
+                output = self.decoder.linear(hiddens.squeeze(1))
+                predicted = output.argmax(1)
+                
+                word_idx = predicted.item()
+                result_caption.append(word_idx)
+                
+                if vocabulary.itos[word_idx] == "<EOS>":
+                    break
+                
+                x = self.decoder.embed(predicted).unsqueeze(1)
+        
+        return [vocabulary.itos[i] for i in result_caption]

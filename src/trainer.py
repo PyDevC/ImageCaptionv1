@@ -1,5 +1,6 @@
 import torch
 from tqdm import tqdm
+import os
 
 
 def train(
@@ -14,7 +15,7 @@ def train(
     Training function for 
     """
     model.to(device)
-    model.train() # TODO: Let me check if I need it or not
+    model.train()
 
     for epoch in range(num_epoch):
         loop = tqdm(data_loader, leave=True)
@@ -25,9 +26,9 @@ def train(
             image = image.to(device)
             label = label.to(device)
 
-            out = model(image)
+            out = model(image, label)
 
-            loss = criterion(out, label) # TODO: Check if the order is correct
+            loss = criterion(out.reshape(-1, out.shape[2]), label.reshape(-1))
             loss.backward()
 
             optimizer.zero_grad()
@@ -42,5 +43,7 @@ def train(
             
         avg_epoch_loss = running_loss / len(data_loader)
         print(f"Epoch {epoch+1} Complete. Average Loss: {avg_epoch_loss:.6f}")
+
+    torch.save(model, os.path.join(os.path.dirname(os.path.dirname(__file__)), "temp", "models", "ImageCaptionv1.pt"))
             
     return model

@@ -67,7 +67,7 @@ class CocoDataset(Dataset):
         numericalized_caption += self.vocab.numericalize(caption)
         numericalized_caption.append(self.vocab.stoi["<EOS>"])
 
-        return image, torch.tensor(numericalized_caption)
+        return image, torch.tensor(numericalized_caption), img_id
 
     def __len__(self):
         return len(self.ids)
