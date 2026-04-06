@@ -14,10 +14,10 @@ from src.evaluation import evaluate_model
 
 embed_size = 256
 hidden_size = 512
-num_layers = 5
+num_layers = 2
 learning_rate = 3e-4
 num_epochs = 10
-batch_size = 16
+batch_size = 32
 device = "cuda"
 
 ## Mentioned in VGG16 docs
@@ -64,9 +64,9 @@ def training():
     train(
         data_loader=train_loader,
         model=model,
-        criterion=criterion,
         optimizer=optimizer,
         vocab_size=vocab_size,
+        pad_idx=pad_idx,
         num_epoch=num_epochs,
         device=device
     )
