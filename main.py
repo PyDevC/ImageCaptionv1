@@ -15,7 +15,7 @@ from src.evaluation import evaluate_model
 embed_size = 256
 hidden_size = 512
 num_layers = 5
-learning_rate = 1e-6
+learning_rate = 3e-4
 num_epochs = 10
 batch_size = 16
 device = "cuda"
@@ -66,37 +66,45 @@ def training():
         model=model,
         criterion=criterion,
         optimizer=optimizer,
+        vocab_size=vocab_size,
         num_epoch=num_epochs,
         device=device
     )
 
 
 def testing():
-    test_root = os.path.join(PATH, "images", "val2017")
-    test_ann = os.path.join(PATH, "annotations", "captions_val2017.json")
+    from torch.utils.data import SubsetRandomSampler
+
+    test_root = os.path.join(PATH, "images", "train2017")
+    test_ann = os.path.join(PATH, "annotations", "captions_train2017.json")
     
     test_dataset = CocoDataset(
         root_dir=test_root,
         ann_file=test_ann,
         transform=transform
     )
+
+    sampler = SubsetRandomSampler([x for x in range(1000)])
     
     test_loader = DataLoader(
-        dataset=test_dataset
+        dataset=test_dataset,
+        sampler=sampler
     )
 
     vocab_size = len(test_dataset.vocab)
     
-    model = ImageCaptionModel(
-        embed_size=embed_size,
-        hidden_size=hidden_size,
-        vocab_size=vocab_size,
-        num_layers=num_layers
-    )
+    # model = ImageCaptionModel(
+    #     embed_size=embed_size,
+    #     hidden_size=hidden_size,
+    #     vocab_size=vocab_size,
+    #     num_layers=num_layers
+    # )
+
+    model = torch.load(os.path.join(os.path.dirname(__file__), "temp", "models", "ImageCaptionv1.pt"), weights_only=False)
 
     vocab = test_dataset.vocab
 
-    evaluate_model(test_loader, model, vocab, transform)
+    evaluate_model(test_loader, model, vocab, test_ann, transform)
 
 def cli():
     training()

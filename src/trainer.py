@@ -8,6 +8,7 @@ def train(
     model: torch.nn.Module, 
     criterion: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
+    vocab_size: int,
     num_epoch: int = 20, 
     device: str = 'cuda'
 ):
@@ -26,12 +27,13 @@ def train(
             image = image.to(device)
             label = label.to(device)
 
+            optimizer.zero_grad()
+
             out = model(image, label)
 
-            loss = criterion(out.reshape(-1, out.shape[2]), label.reshape(-1))
+            loss = criterion(out.view(-1, vocab_size), label.view(-1))
             loss.backward()
 
-            optimizer.zero_grad()
             optimizer.step()
 
             running_loss += loss.item()

@@ -16,11 +16,13 @@ def evaluate_model(test_loader: DataLoader[ms_coco.CocoDataset],
                    model: imgcap.ImageCaptionModel, 
                    vocab: ms_coco.Vocabulary, 
                    ann_file: str, 
-                   transform=None, device: str="cuda"
+                   transform=None, 
+                   device: str="cuda"
                    ):
 
     model.eval()
     results = []
+    model = model.to(device)
 
     print("BenchMarking Dataset ... .. .")
 
@@ -33,15 +35,15 @@ def evaluate_model(test_loader: DataLoader[ms_coco.CocoDataset],
 
         caption_words = model.caption_image(image, vocab)
         
-        caption = " ".join(w for w in caption_words if w not in itos)
+        caption = " ".join(w for w in caption_words if w in itos)
 
         results.append({
-            "image_id": img_id,
+            "image_id": img_id.item(),
             "caption": caption
         })
 
-    res_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "temp", "results")
-    with open(res_file) as f:
+    res_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "temp", "results", "metrics.json")
+    with open(res_file, "w") as f:
         json.dump(results, f)
 
     coco_gt = COCO(ann_file)
