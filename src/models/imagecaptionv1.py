@@ -8,35 +8,43 @@ class EncoderCNN(nn.Module):
         super(EncoderCNN, self).__init__()
         vgg16 = models.vgg16(weights=VGG16_Weights.DEFAULT)
         for param in vgg16.parameters():
-            # NOTE: Do not make it True, we don't want to train the weights of vgg16
             param.requires_grad_(False)
 
-        # vgg16 has 3 Major Layers Only First one is used for feature extraction
         self.vgg16 = vgg16.features
         self.adaptive_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.flatten = nn.Flatten()
-
-        # Make sure the layer name is same in Decoder too as both have same purpose
+        
+        # Linear layer to map VGG features to embedding space
         self.embed = nn.Linear(512, embed_size)
+        # Batch normalization is critical to normalize image features 
+        # before they interact with word embeddings
+        self.bn = nn.BatchNorm1d(embed_size, momentum=0.01)
 
     def forward(self, x):
         x = self.vgg16(x)
         x = self.adaptive_avg_pool(x)
-        x = self.flatten(x) # Check the size before running
-        out = self.embed(x)
-        return out
+        x = self.flatten(x)
+        x = self.embed(x)
+        return x
 
 class DecoderRNN(nn.Module):
-    def __init__(self, embed_size, hidden_size, vocab_size, num_layers) -> None:
+    def __init__(self, embed_size, hidden_size, vocab_size, num_layers):
         super(DecoderRNN, self).__init__()
         self.embed = nn.Embedding(vocab_size, embed_size)
+        # Standard RNN unit
         self.rnn = nn.RNN(embed_size, hidden_size, num_layers, batch_first=True)
         self.linear = nn.Linear(hidden_size, vocab_size)
 
-    # I need to add alias as captions can be anything
     def forward(self, features, captions):
+        # Captions: [batch_size, seq_len]
+        # Remove <EOS> from input to keep sequence length consistent 
+        # after concatenating image features
         embeddings = self.embed(captions[:, :-1])
+        
+        # Prepend image features as the first time step
+        # features shape: [batch_size, embed_size] -> [batch_size, 1, embed_size]
         embeddings = torch.cat((features.unsqueeze(1), embeddings), dim=1)
+        
         hiddens, _ = self.rnn(embeddings)
         return self.linear(hiddens)
 
@@ -50,23 +58,29 @@ class ImageCaptionModel(nn.Module):
         features = self.encoder(images)
         return self.decoder(features, captions)
 
-    def caption_image(self, image, vocabulary, max_length=50):
+    def caption_image(self, image, vocabulary, max_length=50, temperature=0.5):
         result_caption = []
         with torch.no_grad():
-            x = self.encoder(image).unsqueeze(1) # (1, 1, embed_size)
-            states = None
+            x = self.encoder(image).unsqueeze(1) 
+            h = None 
 
             for _ in range(max_length):
-                hiddens, states = self.decoder.rnn(x, states)
+                hiddens, h = self.decoder.rnn(x, h)
                 output = self.decoder.linear(hiddens.squeeze(1))
-                predicted = output.argmax(1)
+                
+                # Apply temperature scaling to logits
+                scaled_logits = output / temperature
+                probabilities = torch.softmax(scaled_logits, dim=1)
+                
+                # Sample from probability distribution instead of argmax
+                predicted = torch.multinomial(probabilities, 1)
                 
                 word_idx = predicted.item()
                 result_caption.append(word_idx)
                 
-                if vocabulary.itos[word_idx] == "<EOS>":
+                if vocabulary.idx2word[word_idx] == vocabulary.end_word:
                     break
                 
-                x = self.decoder.embed(predicted).unsqueeze(1)
+                x = self.decoder.embed(predicted) # [batch_size, 1, embed_size]
         
-        return [vocabulary.itos[i] for i in result_caption]
+        return [vocabulary.idx2word[i] for i in result_caption]

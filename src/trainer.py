@@ -1,7 +1,6 @@
 import os
 import torch
 import torch.nn as nn
-from torch.cuda.amp import GradScaler
 from tqdm import tqdm
 
 
@@ -55,7 +54,7 @@ def train(
     )
 
     use_amp = device == "cuda" and torch.cuda.is_available()
-    scaler = GradScaler(enabled=use_amp)
+    scaler = torch.amp.grad_scaler.GradScaler(device, enabled=use_amp)
 
     start_epoch = 0
     best_loss = float("inf")
@@ -82,7 +81,7 @@ def train(
 
             optimizer.zero_grad(set_to_none=True)
 
-            with torch.amp.autocast(device_type=device, enabled=use_amp):
+            with torch.amp.autocast_mode.autocast(device_type=device, enabled=use_amp):
                 out = model(imgs, labels)
                 loss = criterion(
                     out.reshape(-1, vocab_size),

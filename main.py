@@ -1,26 +1,23 @@
 import os
-import argparse
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import transforms
 from torch.utils.data import DataLoader
 
-from src.dataset.ms_coco import CocoDataset, CollateBatch, Vocabulary
+from src.dataset.ms_coco import CocoDataset, CollateBatch
 from src.models.imagecaptionv1 import ImageCaptionModel
 from src.trainer import train
 from src.evaluation import evaluate_model
 
-embed_size = 256
-hidden_size = 512
+embed_size = 512
+hidden_size = 1024
 num_layers = 2
 learning_rate = 3e-4
 num_epochs = 10
 batch_size = 32
-device = "cuda"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
-## Mentioned in VGG16 docs
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -28,6 +25,7 @@ transform = transforms.Compose([
 ])
 
 PATH = os.path.join(os.path.dirname(__file__), "data", "COCO")
+VOCAB_PATH = os.path.join(os.path.dirname(__file__), "vocab.pkl")
 
 def training():
     train_root = os.path.join(PATH, "images", "train2017")
@@ -36,10 +34,13 @@ def training():
     train_dataset = CocoDataset(
         root_dir=train_root,
         ann_file=train_ann,
-        transform=transform
+        transform=transform,
+        vocab_file=VOCAB_PATH,
+        vocab_from_file=False
     )
     
-    pad_idx = train_dataset.vocab.stoi["<PAD>"]
+    vocab = train_dataset.vocab
+    pad_idx = vocab.word2idx[vocab.pad_word]
     
     train_loader = DataLoader(
         dataset=train_dataset,
@@ -49,14 +50,14 @@ def training():
         collate_fn=CollateBatch(pad_idx=pad_idx)
     )
     
-    vocab_size = len(train_dataset.vocab)
+    vocab_size = len(vocab)
     
     model = ImageCaptionModel(
         embed_size=embed_size,
         hidden_size=hidden_size,
         vocab_size=vocab_size,
         num_layers=num_layers
-    )
+    ).to(device)
     
     criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -71,43 +72,46 @@ def training():
         device=device
     )
 
-
 def testing():
     from torch.utils.data import SubsetRandomSampler
 
-    test_root = os.path.join(PATH, "images", "train2017")
-    test_ann = os.path.join(PATH, "annotations", "captions_train2017.json")
+    test_root = os.path.join(PATH, "images", "val2017")
+    test_ann = os.path.join(PATH, "annotations", "captions_val2017.json")
     
     test_dataset = CocoDataset(
         root_dir=test_root,
         ann_file=test_ann,
-        transform=transform
+        transform=transform,
+        vocab_file=VOCAB_PATH,
+        vocab_from_file=True
     )
 
-    sampler = SubsetRandomSampler([x for x in range(1000)])
-    
     test_loader = DataLoader(
         dataset=test_dataset,
-        sampler=sampler
+        batch_size=1,
     )
 
-    vocab_size = len(test_dataset.vocab)
-    
-    # model = ImageCaptionModel(
-    #     embed_size=embed_size,
-    #     hidden_size=hidden_size,
-    #     vocab_size=vocab_size,
-    #     num_layers=num_layers
-    # )
-
-    model = torch.load(os.path.join(os.path.dirname(__file__), "temp", "models", "ImageCaptionv1.pt"), weights_only=False)
-
     vocab = test_dataset.vocab
+    vocab_size = len(vocab)
 
-    evaluate_model(test_loader, model, vocab, test_ann, transform)
+    model = ImageCaptionModel(
+        embed_size=embed_size,
+        hidden_size=hidden_size,
+        vocab_size=vocab_size,
+        num_layers=num_layers
+    ).to(device)
+
+    model_path = os.path.join(os.path.dirname(__file__), "temp", "models", "best_model.pt")
+    
+    # 2. Load the state dictionary into the model
+    state_dict = torch.load(model_path, map_location=device, weights_only=True)
+    model.load_state_dict(state_dict)
+    model.eval()
+
+    evaluate_model(test_loader, model, test_dataset.vocab, test_ann, transform)
 
 def cli():
-    training()
+    # training()
     testing()
 
 cli()
