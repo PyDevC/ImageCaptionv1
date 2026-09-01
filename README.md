@@ -12,10 +12,12 @@ Image Captioning using PyTorch with CNN-RNN Hybrid model
 pip install -r requirements.txt
 ```
 
-## How to use
+## Download dataset
+
+Download dataset inside data directory.
+All internal files are designed to work with COCO directory being in data directory.
 
 ```bash
-# Train model
-# Test
-# Inference
+cd data
+python3 download_dataset.py
 ```
