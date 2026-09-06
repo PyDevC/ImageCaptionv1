@@ -6,13 +6,12 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 
 from src.dataset.ms_coco import CocoDataset, CollateBatch
-from src.models.imagecaptionv1 import ImageCaptionModel
+from src.models.st_agbilstm import STAGBiLSTMModel
 from src.trainer import train
 from src.evaluation import evaluate_model
 
 embed_size = 512
-hidden_size = 1024
-num_layers = 2
+hidden_size = 512
 learning_rate = 3e-4
 num_epochs = 10
 batch_size = 32
@@ -52,11 +51,10 @@ def training():
     
     vocab_size = len(vocab)
     
-    model = ImageCaptionModel(
+    model = STAGBiLSTMModel(
         embed_size=embed_size,
         hidden_size=hidden_size,
         vocab_size=vocab_size,
-        num_layers=num_layers
     ).to(device)
     
     criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
@@ -94,11 +92,10 @@ def testing():
     vocab = test_dataset.vocab
     vocab_size = len(vocab)
 
-    model = ImageCaptionModel(
+    model = STAGBiLSTMModel(
         embed_size=embed_size,
         hidden_size=hidden_size,
         vocab_size=vocab_size,
-        num_layers=num_layers
     ).to(device)
 
     model_path = os.path.join(os.path.dirname(__file__), "temp", "models", "best_model.pt")
@@ -111,7 +108,8 @@ def testing():
     evaluate_model(test_loader, model, test_dataset.vocab, test_ann, transform)
 
 def cli():
-    # training()
-    testing()
+    training()
+    # testing()
 
-cli()
+if __name__ == '__main__':
+    cli()

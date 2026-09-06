@@ -1,4 +1,6 @@
 torch
+timm
+nltk
 pandas
 pycocotools
 pycocoevalcap

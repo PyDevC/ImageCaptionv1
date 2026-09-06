@@ -2,7 +2,7 @@ import torch
 import matplotlib.pyplot as plt
 from PIL import Image
 from torchvision import transforms
-from src.models.imagecaptionv1 import ImageCaptionModel
+from src.models.st_agbilstm import STAGBiLSTMModel
 
 # Core preprocessing
 TRANSFORM = transforms.Compose([
@@ -51,11 +51,10 @@ def run_visual_inference(image_path, model_path, vocab_path):
         vocab = pickle.load(f)
 
     # Initialize model architecture
-    model = ImageCaptionModel(
+    model = STAGBiLSTMModel(
         embed_size=512,
-        hidden_size=1024,
+        hidden_size=512,
         vocab_size=len(vocab),
-        num_layers=2
     ).to(device)
     
     # Load weights

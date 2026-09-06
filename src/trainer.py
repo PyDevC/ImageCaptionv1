@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import torch
 import torch.nn as nn
 from tqdm import tqdm
@@ -15,7 +16,7 @@ def train(
     checkpoint_dir: str = "temp/models",
     label_smoothing: float = 0.1,
     max_grad_norm: float = 5.0,
-    resume_checkpoint: str | None = None,
+    resume_checkpoint: Optional[str] = None,
 ) -> torch.nn.Module:
     """
     Training loop for image captioning.

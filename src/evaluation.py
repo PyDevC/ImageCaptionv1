@@ -9,10 +9,10 @@ from pycocotools.coco import COCO
 from pycocoevalcap.eval import COCOEvalCap
 
 import src.dataset.ms_coco as ms_coco
-import src.models.imagecaptionv1 as imgcap
+import src.models.st_agbilstm as imgcap
 
 def evaluate_model(test_loader: DataLoader,
-                   model: imgcap.ImageCaptionModel, 
+                   model: imgcap.STAGBiLSTMModel, 
                    vocab: ms_coco.Vocabulary, 
                    ann_file: str, 
                    transform=None, 
