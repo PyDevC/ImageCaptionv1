@@ -26,16 +26,17 @@ transform = transforms.Compose([
 PATH = os.path.join(os.path.dirname(__file__), "data", "COCO")
 VOCAB_PATH = os.path.join(os.path.dirname(__file__), "vocab.pkl")
 
-def training():
+def training(resume_checkpoint=None, num_epoch=num_epochs):
     train_root = os.path.join(PATH, "images", "train2017")
     train_ann = os.path.join(PATH, "annotations", "captions_train2017.json")
-    
+
+    use_saved = os.path.exists(VOCAB_PATH)
     train_dataset = CocoDataset(
         root_dir=train_root,
         ann_file=train_ann,
         transform=transform,
         vocab_file=VOCAB_PATH,
-        vocab_from_file=False
+        vocab_from_file=use_saved
     )
     
     vocab = train_dataset.vocab
@@ -66,13 +67,12 @@ def training():
         optimizer=optimizer,
         vocab_size=vocab_size,
         pad_idx=pad_idx,
-        num_epoch=num_epochs,
-        device=device
+        num_epoch=num_epoch,
+        device=device,
+        resume_checkpoint=resume_checkpoint,
     )
 
 def testing():
-    from torch.utils.data import SubsetRandomSampler
-
     test_root = os.path.join(PATH, "images", "val2017")
     test_ann = os.path.join(PATH, "annotations", "captions_val2017.json")
     
@@ -100,7 +100,6 @@ def testing():
 
     model_path = os.path.join(os.path.dirname(__file__), "temp", "models", "best_model.pt")
     
-    # 2. Load the state dictionary into the model
     state_dict = torch.load(model_path, map_location=device, weights_only=True)
     model.load_state_dict(state_dict)
     model.eval()
@@ -108,8 +107,22 @@ def testing():
     evaluate_model(test_loader, model, test_dataset.vocab, test_ann, transform)
 
 def cli():
-    training()
-    # testing()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--train", action="store_true")
+    parser.add_argument("--test", action="store_true")
+    parser.add_argument("--epochs", type=int, default=num_epochs)
+    parser.add_argument("--resume", type=str, default=None,
+                        help="path to a checkpoint .pt to resume training from")
+    args = parser.parse_args()
+
+    if args.resume:
+        args.train = True
+
+    if args.train:
+        training(resume_checkpoint=args.resume, num_epoch=args.epochs)
+    else:
+        testing()
 
 if __name__ == '__main__':
     cli()

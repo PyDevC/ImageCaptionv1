@@ -4,7 +4,6 @@ from PIL import Image
 from torchvision import transforms
 from src.models.st_agbilstm import STAGBiLSTMModel
 
-# Core preprocessing
 TRANSFORM = transforms.Compose([
     transforms.Resize(256),
     transforms.CenterCrop(224),
@@ -16,14 +15,11 @@ def visualize_prediction(image_path, model, vocab, device):
     """
     Displays image and generated caption using matplotlib.
     """
-    # Load and process image for model
     raw_image = Image.open(image_path).convert("RGB")
     input_tensor = TRANSFORM(raw_image).unsqueeze(0).to(device)
     
-    # Generate caption indices
     words = model.caption_image(input_tensor, vocab)
     
-    # Clean output string
     cleaned = []
     for word in words:
         if word in [vocab.start_word, vocab.pad_word]:
@@ -32,17 +28,15 @@ def visualize_prediction(image_path, model, vocab, device):
             break
         cleaned.append(word)
     caption_text = " ".join(cleaned).capitalize() + "."
+    print(caption_text)
 
-    # Matplotlib visualization
     plt.figure(figsize=(8, 8))
     plt.imshow(raw_image)
     plt.axis("off")
     
-    # Place text centered below the image
     plt.figtext(0.5, 0.05, caption_text, wrap=True, horizontalalignment='center', fontsize=12, fontweight='bold')
     plt.show()
 
-# Execution logic
 def run_visual_inference(image_path, model_path, vocab_path):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
@@ -50,15 +44,17 @@ def run_visual_inference(image_path, model_path, vocab_path):
         import pickle
         vocab = pickle.load(f)
 
-    # Initialize model architecture
     model = STAGBiLSTMModel(
         embed_size=512,
         hidden_size=512,
         vocab_size=len(vocab),
     ).to(device)
     
-    # Load weights
-    state_dict = torch.load(model_path, map_location=device, weights_only=True)
+    loaded = torch.load(model_path, map_location=device, weights_only=True)
+    if isinstance(loaded, dict) and "model_state" in loaded:
+        state_dict = loaded["model_state"]
+    else:
+        state_dict = loaded
     model.load_state_dict(state_dict)
     model.eval()
 

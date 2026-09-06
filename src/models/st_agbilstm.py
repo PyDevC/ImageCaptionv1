@@ -39,26 +39,28 @@ class AttentionGate(nn.Module):
 
 
 class AGBiLSTMDecoder(nn.Module):
-    def __init__(self, embed_size, hidden_size, vocab_size, attention_dim, encoder_dim):
+    def __init__(self, embed_size, hidden_size, vocab_size, attention_dim, encoder_dim, dropout=0.5):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size)
-        bi_hidden = hidden_size * 2
-
+        # Unidirectional LSTM: bidirectional is invalid for autoregressive decoding,
+        # because the backward pass would see future tokens during training but not
+        # during inference, producing a severe train/inference mismatch.
         self.lstm = nn.LSTM(
             embed_size,
             hidden_size,
             num_layers=2,
             batch_first=True,
-            bidirectional=True,
         )
 
-        self.attention = AttentionGate(encoder_dim, bi_hidden, attention_dim)
-        self.context_proj = nn.Linear(encoder_dim, bi_hidden)
-        self.gate = nn.Linear(bi_hidden * 2, bi_hidden)
-        self.fc = nn.Linear(bi_hidden, vocab_size)
+        self.attention = AttentionGate(encoder_dim, hidden_size, attention_dim)
+        self.context_proj = nn.Linear(encoder_dim, hidden_size)
+        self.gate = nn.Linear(hidden_size * 2, hidden_size)
+        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(hidden_size, vocab_size)
 
     def forward(self, features, captions):
         embeds = self.embedding(captions[:, :-1])
+        embeds = self.dropout(embeds)
         mean_feat = features.mean(dim=1)
         inputs = torch.cat([mean_feat.unsqueeze(1), embeds], dim=1)
 
@@ -77,6 +79,9 @@ class AGBiLSTMDecoder(nn.Module):
 
     def forward_step(self, word_idx, hidden, features):
         embed = self.embedding(word_idx)
+        if not isinstance(hidden, tuple):
+            hidden = (torch.zeros(2, word_idx.size(0), self.lstm.hidden_size, device=word_idx.device),
+                      torch.zeros(2, word_idx.size(0), self.lstm.hidden_size, device=word_idx.device))
         lstm_out, hidden = self.lstm(embed, hidden)
 
         hidden_cat = lstm_out[:, 0, :]
