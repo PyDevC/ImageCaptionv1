@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import timm
 
+from .base import ImageCaptionBase
 
 class SwinEncoder(nn.Module):
     def __init__(self, embed_size=512):
@@ -96,7 +97,7 @@ class AGBiLSTMDecoder(nn.Module):
         return output, hidden, weights
 
 
-class STAGBiLSTMModel(nn.Module):
+class STAGBiLSTMModel(ImageCaptionBase):
     def __init__(
         self,
         embed_size=512,
@@ -104,7 +105,7 @@ class STAGBiLSTMModel(nn.Module):
         vocab_size=10000,
         attention_dim=256,
     ):
-        super().__init__()
+        super().__init__(embed_size, hidden_size, vocab_size, attention_dim)
         self.encoder = SwinEncoder(embed_size)
         self.decoder = AGBiLSTMDecoder(
             embed_size, hidden_size, vocab_size, attention_dim, embed_size
