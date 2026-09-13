@@ -5,3 +5,4 @@ temp/models/*.pt
 temp/results/*.csv
 temp/results/*.json
 vocab.pkl
+.vscode/
