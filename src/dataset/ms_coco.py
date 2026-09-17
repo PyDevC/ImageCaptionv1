@@ -90,7 +90,15 @@ class CocoDataset(Dataset):
     ):
         self.root_dir = root_dir
         self.coco = COCO(ann_file)
-        self.ids = list(self.coco.imgs.keys())
+
+        self.ann_ids = list(self.coco.anns.keys())
+
+        self.img_paths = {}
+        for img in self.coco.loadImgs(self.coco.getImgIds()):
+            self.img_paths[img['id']] = os.path.join(
+                self.root_dir, img['file_name']
+            )
+
         self.transform = transform
         
         self.vocab = Vocabulary(
@@ -106,12 +114,11 @@ class CocoDataset(Dataset):
             self.vocab.get_vocab()
 
     def __getitem__(self, index):
-        img_id = self.ids[index]
-        ann_ids = self.coco.getAnnIds(imgIds=img_id)
-        caption = self.coco.loadAnns(ann_ids)[0]['caption']
-        
-        img_metadata = self.coco.loadImgs(img_id)[0]
-        img_path = os.path.join(self.root_dir, img_metadata['file_name'])
+        ann = self.coco.loadAnns(self.ann_ids[index])[0]
+        img_id = ann['image_id']
+        caption = ann['caption']
+
+        img_path = self.img_paths[img_id]
         image = Image.open(img_path).convert("RGB")
         
         if self.transform:
@@ -124,7 +131,7 @@ class CocoDataset(Dataset):
         return image, torch.tensor(numericalized_caption), img_id
 
     def __len__(self):
-        return len(self.ids)
+        return len(self.ann_ids)
 
 class CollateBatch:
     def __init__(self, pad_idx):

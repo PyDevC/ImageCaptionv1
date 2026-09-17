@@ -1,9 +1,10 @@
 import os
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torchvision import transforms
 from torch.utils.data import DataLoader
+from torchvision import transforms
 
 from src.dataset.ms_coco import CocoDataset, CollateBatch
 from src.models.st_agbilstm import STAGBiLSTMModel
@@ -102,7 +103,6 @@ def testing():
     
     state_dict = torch.load(model_path, map_location=device, weights_only=True)
     model.load_state_dict(state_dict)
-    model.eval()
 
     evaluate_model(test_loader, model, test_dataset.vocab, test_ann, transform)
 
