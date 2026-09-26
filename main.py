@@ -7,12 +7,13 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from src.dataset.ms_coco import CocoDataset, CollateBatch
-from src.models.st_agbilstm import STAGBiLSTMModel
+from src.models import STAGBiLSTMModel, VGGRnnModel
 from src.trainer import train
 from src.evaluation import evaluate_model
 
 embed_size = 512
 hidden_size = 512
+num_layers = 3
 learning_rate = 3e-4
 num_epochs = 10
 batch_size = 32
@@ -53,10 +54,11 @@ def training(resume_checkpoint=None, num_epoch=num_epochs):
     
     vocab_size = len(vocab)
     
-    model = STAGBiLSTMModel(
+    model = VGGRnnModel(
         embed_size=embed_size,
         hidden_size=hidden_size,
         vocab_size=vocab_size,
+        num_layers=num_layers,
     ).to(device)
     
     criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
@@ -93,10 +95,11 @@ def testing():
     vocab = test_dataset.vocab
     vocab_size = len(vocab)
 
-    model = STAGBiLSTMModel(
+    model = VGGRnnModel(
         embed_size=embed_size,
         hidden_size=hidden_size,
         vocab_size=vocab_size,
+        num_layers=num_layers,
     ).to(device)
 
     model_path = os.path.join(os.path.dirname(__file__), "temp", "models", "best_model.pt")

@@ -35,7 +35,8 @@ class DecoderRNN(nn.Module):
 
     def forward(self, features, captions):
         embeddings = self.embed(captions[:, :-1])
-        embeddings = torch.cat((features.unsqueeze(1), embeddings), dim=1)
+        feature = features.unsqueeze(1)
+        embeddings = torch.cat((feature, embeddings + feature), dim=1)
         hiddens, _ = self.rnn(embeddings)
         return self.linear(hiddens)
 
@@ -49,25 +50,32 @@ class VGGRnnModel(ImageCaptionBase):
         features = self.encoder(images)
         return self.decoder(features, captions)
 
-    def caption_image(self, image, vocabulary, max_length=50, temperature=0.5):
+    def caption_image(self, image, vocabulary, max_length=50, temperature=1.0, greedy=True):
         result_caption = []
         with torch.no_grad():
-            x = self.encoder(image).unsqueeze(1) 
-            h = None 
+            feature = self.encoder(image).unsqueeze(1)
+            h = None
+            word = None
 
-            for _ in range(max_length):
+            for step in range(max_length):
+                if step == 0:
+                    x = feature
+                else:
+                    x = self.decoder.embed(word) + feature
+
                 hiddens, h = self.decoder.rnn(x, h)
-                output = self.decoder.linear(hiddens.squeeze(1))
-                
-                scaled_logits = output / temperature
-                probabilities = torch.softmax(scaled_logits, dim=1)
-                predicted = torch.multinomial(probabilities, 1)
-                word_idx = predicted.item()
+                logits = self.decoder.linear(hiddens[:, -1])
+
+                if greedy:
+                    word = logits.argmax(dim=1, keepdim=True)
+                else:
+                    probs = torch.softmax(logits / temperature, dim=1)
+                    word = torch.multinomial(probs, 1)
+
+                word_idx = word.item()
                 result_caption.append(word_idx)
 
                 if vocabulary.idx2word[word_idx] == vocabulary.end_word:
                     break
-                
-                x = self.decoder.embed(predicted) # [batch_size, 1, embed_size]
-        
+
         return [vocabulary.idx2word[i] for i in result_caption]

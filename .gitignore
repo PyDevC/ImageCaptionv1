@@ -2,6 +2,7 @@ __pycache__/
 .ipynb*
 data/COCO/
 temp/models/*.pt
+temp/preds/
 temp/results/*.csv
 temp/results/*.json
 vocab.pkl

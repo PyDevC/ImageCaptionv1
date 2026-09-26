@@ -115,7 +115,7 @@ class STAGBiLSTMModel(ImageCaptionBase):
         features = self.encoder(images)
         return self.decoder(features, captions)
 
-    def caption_image(self, image, vocabulary, max_length=50, temperature=0.5):
+    def caption_image(self, image, vocabulary, max_length=50, temperature=1.0, greedy=True):
         result_caption = []
         with torch.no_grad():
             features = self.encoder(image)
@@ -128,8 +128,11 @@ class STAGBiLSTMModel(ImageCaptionBase):
                 output, hidden, _ = self.decoder.forward_step(
                     word_idx.unsqueeze(1), hidden, features
                 )
-                probs = torch.softmax(output / temperature, dim=-1)
-                predicted = torch.multinomial(probs, 1).squeeze(1)
+                if greedy:
+                    predicted = output.argmax(dim=-1)
+                else:
+                    probs = torch.softmax(output / temperature, dim=-1)
+                    predicted = torch.multinomial(probs, 1).squeeze(1)
 
                 idx = predicted.item()
                 result_caption.append(idx)

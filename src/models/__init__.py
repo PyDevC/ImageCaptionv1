@@ -1,4 +1,4 @@
-from .st_agbilstm import STAGBiLSTMModel
+from .st_aglstm import STAGBiLSTMModel
 from .vgg_rnn import VGGRnnModel
 
 ## Get your models from here
